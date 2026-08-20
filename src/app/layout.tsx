@@ -37,8 +37,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} dark`}>
-      <body className="antialiased min-h-screen flex flex-col transition-colors duration-300">
+    <html lang="en" className={`${inter.variable} dark`} suppressHydrationWarning>
+      <body className="antialiased min-h-screen flex flex-col transition-colors duration-300" suppressHydrationWarning>
         <ThemeProvider>
           <Navbar />
           <main className="flex-1">{children}</main>

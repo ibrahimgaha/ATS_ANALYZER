@@ -2,15 +2,15 @@
 
 @layer base {
   :root {
-    --bg-main: #090d16;
-    --text-main: #f8fafc;
+    --bg-main: #0c0e14;
+    --text-main: #f1f5f9;
     --text-muted: #94a3b8;
-    --card-bg: #0f172a;
-    --card-border: #1e293b;
-    --glass-bg: rgba(15, 23, 42, 0.8);
-    --glass-border: #1e293b;
-    --input-bg: #0f172a;
-    --input-border: #334155;
+    --card-bg: #131722;
+    --card-border: #1e2638;
+    --glass-bg: rgba(19, 23, 34, 0.85);
+    --glass-border: #1e2638;
+    --input-bg: #131722;
+    --input-border: #28334a;
   }
 
   html.light {
@@ -19,7 +19,7 @@
     --text-muted: #475569;
     --card-bg: #ffffff;
     --card-border: #e2e8f0;
-    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-bg: rgba(255, 255, 255, 0.9);
     --glass-border: #e2e8f0;
     --input-bg: #ffffff;
     --input-border: #cbd5e1;
@@ -42,13 +42,12 @@
 }
 
 @layer utilities {
-  /* Minimal solid text accent — professional & clean */
   .brand-text {
     color: #4f46e5;
   }
 
   html.dark .brand-text {
-    color: #6366f1;
+    color: #818cf8;
   }
 
   .glass {
@@ -57,13 +56,13 @@
     border-bottom: 1px solid var(--glass-border);
   }
 
-  /* Professional Solid Primary Button */
+  /* Modern Solid Primary Button */
   .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.625rem 1.375rem;
+    padding: 0.625rem 1.25rem;
     border-radius: 0.5rem;
     font-weight: 600;
     font-size: 0.875rem;
@@ -71,17 +70,19 @@
     color: #ffffff;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+    transition: all 0.15s ease;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     text-decoration: none;
   }
 
   .btn-primary:hover {
     background-color: #4338ca;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
   }
 
   .btn-primary:active {
-    transform: scale(0.99);
+    transform: translateY(0);
   }
 
   .btn-primary:disabled {
@@ -91,13 +92,13 @@
     box-shadow: none;
   }
 
-  /* Professional Secondary Button */
+  /* Modern Secondary Button */
   .btn-secondary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.625rem 1.375rem;
+    padding: 0.625rem 1.25rem;
     border-radius: 0.5rem;
     font-weight: 600;
     font-size: 0.875rem;
@@ -107,13 +108,14 @@
   }
 
   html.dark .btn-secondary {
-    background-color: #1e293b;
-    color: #f8fafc;
-    border: 1px solid #334155;
+    background-color: #1a2030;
+    color: #f1f5f9;
+    border: 1px solid #28334a;
   }
 
   html.dark .btn-secondary:hover {
-    background-color: #334155;
+    background-color: #242d42;
+    border-color: #3b4866;
   }
 
   html.light .btn-secondary {
@@ -124,27 +126,35 @@
 
   html.light .btn-secondary:hover {
     background-color: #f1f5f9;
-  }
-
-  .section-heading {
-    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.25;
+    border-color: #94a3b8;
   }
 
   .card {
     border-radius: 0.875rem;
     background: var(--card-bg);
     border: 1px solid var(--card-border);
-    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
   }
 
   html.light .card {
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  }
+
+  html.light .card-hover:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
   }
 
   html.dark .card {
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  html.dark .card-hover:hover {
+    border-color: #2f3c58;
+    box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.5);
   }
 }

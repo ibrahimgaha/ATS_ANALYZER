@@ -8,31 +8,60 @@ export const maxDuration = 60;
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
-// Helper for safe PDF parsing in serverless environment
+// Helper for safe and multi-page resilient PDF parsing in serverless environment
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  // Safe dynamic require to prevent top-level serverless module initialization crashes
   // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
   const pdfParseModule = require("pdf-parse") as any;
 
+  let text = "";
+
+  // Strategy 1: PDFParse class API (v2)
   if (pdfParseModule?.PDFParse) {
-    const parser = new pdfParseModule.PDFParse({ data: buffer });
     try {
-      const textResult = await parser.getText();
-      return textResult.text ? textResult.text.trim() : "";
-    } finally {
-      if (typeof parser.destroy === "function") {
-        await parser.destroy();
+      const parser = new pdfParseModule.PDFParse({ data: buffer });
+      try {
+        const textResult = await parser.getText();
+        if (textResult?.text) {
+          text = textResult.text.trim();
+        } else if (Array.isArray(textResult?.pages)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          text = textResult.pages.map((p: any) => p.text || "").join("\n\n").trim();
+        }
+      } finally {
+        if (typeof parser.destroy === "function") {
+          await parser.destroy();
+        }
       }
+    } catch (parseClassErr) {
+      console.warn("[PDFParse class failed, trying fallback]:", parseClassErr);
     }
-  } else if (typeof pdfParseModule === "function") {
-    const pdfData = await pdfParseModule(buffer);
-    return pdfData.text ? pdfData.text.trim() : "";
-  } else if (typeof pdfParseModule?.default === "function") {
-    const pdfData = await pdfParseModule.default(buffer);
-    return pdfData.text ? pdfData.text.trim() : "";
-  } else {
-    throw new Error("Could not initialize PDF parser module");
   }
+
+  // Strategy 2: Direct function call (v1 / CJS wrapper)
+  if (!text && typeof pdfParseModule === "function") {
+    try {
+      const pdfData = await pdfParseModule(buffer);
+      if (pdfData?.text) {
+        text = pdfData.text.trim();
+      }
+    } catch (funcErr) {
+      console.warn("[PDFParse function fallback failed]:", funcErr);
+    }
+  }
+
+  // Strategy 3: Default export function
+  if (!text && typeof pdfParseModule?.default === "function") {
+    try {
+      const pdfData = await pdfParseModule.default(buffer);
+      if (pdfData?.text) {
+        text = pdfData.text.trim();
+      }
+    } catch (defErr) {
+      console.warn("[PDFParse default export failed]:", defErr);
+    }
+  }
+
+  return text;
 }
 
 export async function POST(req: NextRequest) {
@@ -110,7 +139,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Could not extract readable text from your PDF. Please ensure your CV is a text-based PDF (not a scanned image).",
+            "Unable to parse this PDF file. Please ensure the document is not corrupted, password-protected, or restricted.",
         },
         { status: 422 }
       );
@@ -120,7 +149,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "The PDF contains little or no text. Please upload a standard text-based PDF CV.",
+            "No readable text was found in your PDF. This typically happens with scanned documents or image-based PDFs. Please upload a text-based PDF exported directly from Word, Google Docs, or a CV builder.",
         },
         { status: 422 }
       );

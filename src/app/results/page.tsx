@@ -34,7 +34,7 @@ function getAtsStatus(score: number) {
   };
 }
 
-function MetricCard({
+function MetricRow({
   label,
   score,
 }: {
@@ -42,14 +42,14 @@ function MetricCard({
   score: number;
 }) {
   return (
-    <div className="card p-4 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-      <div className="flex justify-between items-center text-xs font-semibold mb-2">
+    <div className="space-y-1">
+      <div className="flex justify-between items-center text-xs font-semibold">
         <span className="text-slate-600 dark:text-slate-400">{label}</span>
         <span className="tabular-nums font-bold text-slate-900 dark:text-slate-100">{score}%</span>
       </div>
       <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
         <div
-          className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full"
+          className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-500 ease-out"
           style={{ width: `${score}%` }}
         />
       </div>
@@ -61,6 +61,7 @@ export default function ResultsPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string>("");
   const [copiedSummary, setCopiedSummary] = useState(false);
+  const [copiedBulletIdx, setCopiedBulletIdx] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -80,6 +81,12 @@ export default function ResultsPage() {
     navigator.clipboard.writeText(text);
     setCopiedSummary(true);
     setTimeout(() => setCopiedSummary(false), 2000);
+  };
+
+  const handleCopyBullet = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedBulletIdx(idx);
+    setTimeout(() => setCopiedBulletIdx(null), 2000);
   };
 
   if (error) {
@@ -111,195 +118,230 @@ export default function ResultsPage() {
   const atsStatus = getAtsStatus(result.atsScore);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-6">
-      {/* Top Navigation / Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Top Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5 mb-8">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-            Analysis Report
-          </span>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+              Audit Report Ready
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
             ATS Compatibility Evaluation
           </h1>
         </div>
 
-        <Link href="/analyze" className="btn-primary text-xs py-2 px-4">
-          Analyze Another CV
-        </Link>
-      </div>
-
-      {/* 🌟 MAIN VISUAL HERO: ATS SCORE FOCUS */}
-      <div className="card p-6 sm:p-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-        <div className="grid md:grid-cols-12 gap-6 items-center">
-          {/* Left Column: Primary ATS Score Gauge */}
-          <div className="md:col-span-5 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800 pb-6 md:pb-0 md:pr-6">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-              Primary ATS Score
-            </span>
-            <ScoreRing
-              score={result.atsScore}
-              size={140}
-              strokeWidth={11}
-              label=""
-              gradientId="hero-ats-gauge"
-            />
-            <span className={`mt-3 inline-block px-3 py-1 rounded-md text-xs font-bold border ${atsStatus.badgeStyle}`}>
-              {atsStatus.badge}
-            </span>
-          </div>
-
-          {/* Right Column: Key Breakdown Metrics */}
-          <div className="md:col-span-7 space-y-4">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">
-                Executive Overview
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                {atsStatus.desc}
-              </p>
-            </div>
-
-            {/* Score Breakdown Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-              <MetricCard label="Overall Quality" score={result.overallScore} />
-              <MetricCard label="Keyword Match" score={result.keywordScore} />
-              <MetricCard label="Formatting Score" score={result.formattingScore} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 📊 STRENGTHS & WEAKNESSES GRID */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Strengths */}
-        <div className="card p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-3 flex items-center gap-1.5">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.print()}
+            className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
+            title="Print or save as PDF"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 6 2 18 2 18 9" />
+              <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+              <rect x="6" y="14" width="12" height="8" />
             </svg>
-            CV Strengths
-          </h2>
-          <ul className="space-y-2">
-            {result.strengths.map((item, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">✓</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Weaknesses / Formatting Warnings */}
-        <div className="card p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-3 flex items-center gap-1.5">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            Formatting Warnings & Limitations
-          </h2>
-          <ul className="space-y-2">
-            {result.weaknesses.map((item, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                <span className="text-rose-600 dark:text-rose-400 font-bold mt-0.5">!</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* 🏷️ MISSING KEYWORDS */}
-      {result.missingKeywords.length > 0 && (
-        <div className="card p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-1">
-            Missing Keywords & Role Terminology
-          </h2>
-          <p className="text-xs text-slate-500 mb-3">
-            Adding these keywords truthfully into your work history or skills section will improve your ATS ranking.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {result.missingKeywords.map((kw, i) => (
-              <span
-                key={i}
-                className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-medium text-slate-700 dark:text-slate-300"
-              >
-                + {kw}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 💡 RECOMMENDATIONS */}
-      {result.recommendations.length > 0 && (
-        <div className="card p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-3">
-            Actionable Recommendations
-          </h2>
-          <div className="space-y-2.5">
-            {result.recommendations.map((rec, i) => (
-              <div key={i} className="flex items-start gap-3 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                <span className="w-5 h-5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold text-[11px] flex items-center justify-center flex-shrink-0 border border-indigo-200 dark:border-indigo-800 mt-0.5">
-                  {i + 1}
-                </span>
-                <span>{rec}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ✍️ SUGGESTED PROFESSIONAL SUMMARY REWRITE */}
-      {result.summarySuggestion && (
-        <div className="card p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-              Suggested Professional Summary Rewrite
-            </h2>
-            <button
-              onClick={() => handleCopySummary(result.summarySuggestion)}
-              className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1"
-            >
-              {copiedSummary ? "Copied!" : "Copy Summary"}
-            </button>
-          </div>
-          <div className="p-3.5 rounded bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 italic leading-relaxed">
-            &ldquo;{result.summarySuggestion}&rdquo;
-          </div>
-        </div>
-      )}
-
-      {/* ⚡ BULLET POINT SUGGESTIONS */}
-      {result.bulletPointSuggestions.length > 0 && (
-        <div className="card p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-3">
-            Suggested Bullet Point Rewrites
-          </h2>
-          <div className="space-y-2">
-            {result.bulletPointSuggestions.map((bp, i) => (
-              <div key={i} className="p-3 rounded bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                {bp}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Footer CTAs */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-        <p className="text-xs text-slate-500">
-          AI evaluation for guidance only — does not guarantee job placement or ATS pass.
-        </p>
-        <div className="flex items-center gap-3">
+            Print Report
+          </button>
           <Link href="/analyze" className="btn-primary text-xs py-2 px-4">
             Analyze Another CV
           </Link>
-          <Link href="/" className="btn-secondary text-xs py-2 px-4">
-            Home
-          </Link>
+        </div>
+      </div>
+
+      {/* ── 🌟 ASYMMETRIC DASHBOARD GRID ── */}
+      <div className="grid lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column (4 cols): Sticky Score Overview & Key Metrics */}
+        <div className="lg:col-span-4 lg:sticky lg:top-20 space-y-5">
+          {/* Main Score Hero Card */}
+          <div className="card p-6 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800 shadow-sm text-center">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+              Primary ATS Score
+            </span>
+            <div className="flex justify-center my-3">
+              <ScoreRing score={result.atsScore} size={150} strokeWidth={11} label="" />
+            </div>
+
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border mt-2 ${atsStatus.badgeStyle}`}>
+              {atsStatus.badge}
+            </span>
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+              {atsStatus.desc}
+            </p>
+          </div>
+
+          {/* Metric Breakdown Card */}
+          <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800 space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+              Performance Breakdown
+            </h3>
+            <MetricRow label="Overall Quality" score={result.overallScore} />
+            <MetricRow label="Keyword Relevance" score={result.keywordScore} />
+            <MetricRow label="Formatting & Layout" score={result.formattingScore} />
+          </div>
+
+          {/* Privacy & Legal Disclaimer */}
+          <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 leading-relaxed">
+            AI evaluation for guidance only — does not guarantee employment outcomes or ATS approval.
+          </div>
+        </div>
+
+        {/* Right Main Workspace (8 cols): Actionable Findings & Content Rewrites */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Strengths & Weaknesses Split Grid */}
+          <div className="grid sm:grid-cols-2 gap-5">
+            {/* Strengths */}
+            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-3 flex items-center gap-1.5">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                CV Strengths
+              </h2>
+              <ul className="space-y-2.5">
+                {result.strengths.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Weaknesses / Formatting Warnings */}
+            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-3 flex items-center gap-1.5">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                Formatting Warnings & Gaps
+              </h2>
+              <ul className="space-y-2.5">
+                {result.weaknesses.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                    <span className="text-rose-600 dark:text-rose-400 font-bold mt-0.5">!</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Missing Keywords Cloud */}
+          {result.missingKeywords.length > 0 && (
+            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-1">
+                Missing Keywords & Role Terminology
+              </h2>
+              <p className="text-xs text-slate-500 mb-3">
+                Incorporate these terms into your job descriptions or skills section to improve ATS relevance rankings:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {result.missingKeywords.map((kw, i) => (
+                  <span
+                    key={i}
+                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    + {kw}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Actionable Recommendations */}
+          {result.recommendations.length > 0 && (
+            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-3">
+                Actionable Recommendations
+              </h2>
+              <div className="space-y-2.5">
+                {result.recommendations.map((rec, i) => (
+                  <div key={i} className="flex items-start gap-3 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                    <span className="w-5 h-5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold text-[11px] flex items-center justify-center flex-shrink-0 border border-indigo-200 dark:border-indigo-800 mt-0.5">
+                      {i + 1}
+                    </span>
+                    <span>{rec}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Suggested Professional Summary Rewrite */}
+          {result.summarySuggestion && (
+            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                  Suggested Professional Summary Rewrite
+                </h2>
+                <button
+                  onClick={() => handleCopySummary(result.summarySuggestion)}
+                  className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1.5 transition-colors"
+                >
+                  {copiedSummary ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span className="text-emerald-600 dark:text-emerald-400">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                      </svg>
+                      Copy Summary
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 italic leading-relaxed">
+                &ldquo;{result.summarySuggestion}&rdquo;
+              </div>
+            </div>
+          )}
+
+          {/* Suggested Bullet Point Rewrites */}
+          {result.bulletPointSuggestions.length > 0 && (
+            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-3">
+                Suggested Bullet Point Rewrites
+              </h2>
+              <div className="space-y-2.5">
+                {result.bulletPointSuggestions.map((bp, i) => (
+                  <div
+                    key={i}
+                    className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed flex items-start justify-between gap-3 group"
+                  >
+                    <span>{bp}</span>
+                    <button
+                      onClick={() => handleCopyBullet(bp, i)}
+                      className="flex-shrink-0 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1"
+                      title="Copy bullet point"
+                    >
+                      {copiedBulletIdx === i ? (
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Copied!</span>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
