@@ -48,83 +48,56 @@ export default function UploadDropzone({
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         className={`
-          flex flex-col items-center justify-center gap-3 
-          border-2 border-dashed rounded-2xl p-8 cursor-pointer
-          transition-all duration-200 shadow-sm
+          flex flex-col items-center justify-center gap-2.5 
+          border-2 border-dashed rounded-xl p-7 cursor-pointer
+          transition-all duration-150
           ${
             dragging
-              ? "border-indigo-500 bg-indigo-500/10"
+              ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30"
               : selectedFile
-              ? "border-teal-500 bg-teal-500/10"
-              : "border-slate-300 dark:border-white/15 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-white/[0.02] hover:bg-slate-50 dark:hover:bg-white/[0.05]"
+              ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30"
+              : "border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 bg-slate-50/50 dark:bg-slate-900/50"
           }
-          ${error ? "border-rose-500 bg-rose-500/10" : ""}
+          ${error ? "border-rose-500 bg-rose-50/50 dark:bg-rose-950/30" : ""}
         `}
       >
         {selectedFile ? (
           <>
-            <div className="w-12 h-12 rounded-full bg-teal-500/15 flex items-center justify-center">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#14b8a6"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                <polyline points="14,2 14,8 20,8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10,9 9,9 8,9" />
+                <polyline points="14 2 14 8 20 8" />
               </svg>
             </div>
             <div className="text-center">
-              <p className="font-semibold text-teal-600 dark:text-teal-400 text-sm">
+              <p className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
                 {selectedFile.name}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {formatBytes(selectedFile.size)} · PDF
+              <p className="text-[11px] text-slate-500 mt-0.5 font-mono">
+                {formatBytes(selectedFile.size)} · PDF Document
               </p>
             </div>
-            <span className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline">
-              Click to change file
+            <span className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline mt-1">
+              Change file
             </span>
           </>
         ) : (
           <>
-            <div
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
-                dragging ? "bg-indigo-500/20" : "bg-slate-100 dark:bg-white/[0.06]"
-              }`}
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={dragging ? "#6366f1" : "#64748b"}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="17,8 12,3 7,8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
+            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
               </svg>
             </div>
             <div className="text-center">
-              <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
-                {dragging ? "Drop your CV here" : "Upload your CV"}
+              <p className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                {dragging ? "Drop your CV file here" : "Click or drag your CV to upload"}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                PDF only · Max 5 MB
+                Supported format: PDF · Maximum size: 5 MB
               </p>
             </div>
-            <span className="text-xs px-3.5 py-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.06] border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 font-medium">
-              Browse files
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-sm mt-1">
+              Select PDF File
             </span>
           </>
         )}

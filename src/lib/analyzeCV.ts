@@ -35,10 +35,16 @@ export async function analyzeCV(
   cvText: string,
   jobDescription: string
 ): Promise<AnalysisResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+    process.env.GOOGLE_GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY;
+
   if (!apiKey) {
+    console.error("[Vercel Production Error] GEMINI_API_KEY environment variable is not defined.");
     throw new Error(
-      "GEMINI_API_KEY is not configured. Please add it to your .env.local file."
+      "GEMINI_API_KEY is not configured in environment variables. Please add GEMINI_API_KEY in your Vercel Project Settings -> Environment Variables."
     );
   }
 
