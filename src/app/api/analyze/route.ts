@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeCV } from "@/lib/analyzeCV";
 import { checkRateLimit } from "@/lib/rateLimiter";
-import zlib from "zlib";
+import { extractText } from "unpdf";
 
 // Force Node.js runtime and set Vercel max function duration to 60s
 export const runtime = "nodejs";
@@ -9,106 +9,124 @@ export const maxDuration = 60;
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
-// Helper: direct PDF stream decompressor for PDFs containing images/custom font streams
-function extractTextFromStreams(buffer: Buffer): string {
-  try {
-    const raw = buffer.toString("latin1");
-    const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
-    let match: RegExpExecArray | null;
-    const extractedWords: string[] = [];
-
-    while ((match = streamRegex.exec(raw)) !== null) {
-      let streamData = Buffer.from(match[1], "latin1");
-
-      try {
-        streamData = zlib.inflateSync(streamData);
-      } catch {
-        // Not compressed with standard flate, use raw data
-      }
-
-      const text = streamData.toString("latin1");
-      const stringMatches = text.match(/\(([^()]*)\)/g);
-      if (stringMatches) {
-        for (const str of stringMatches) {
-          const clean = str.slice(1, -1).trim();
-          if (clean.length > 1 && !/^[0-9\s.,;:\-_/\\]+$/.test(clean)) {
-            extractedWords.push(clean);
-          }
-        }
-      }
-    }
-
-    return extractedWords.join(" ").trim();
-  } catch (err) {
-    console.warn("[PDF stream fallback parse error]:", err);
-    return "";
+// Clean extracted text and ensure it is human-readable (not binary/metadata junk)
+function cleanAndValidateCVText(rawText: string): {
+  isValid: boolean;
+  cleanText: string;
+  reason?: string;
+} {
+  if (!rawText || typeof rawText !== "string") {
+    return { isValid: false, cleanText: "", reason: "No text found in PDF." };
   }
+
+  // Normalize line breaks & tabs
+  const text = rawText
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/[\t ]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  // Guard against raw PDF binary streams, objects, or syntax leakage
+  if (
+    text.includes("%PDF-") ||
+    text.includes("/FlateDecode") ||
+    text.includes("/Type /Catalog") ||
+    text.includes("endstream") ||
+    text.includes("xref\n0")
+  ) {
+    return {
+      isValid: false,
+      cleanText: "",
+      reason: "Extracted content contains raw PDF syntax instead of readable CV text.",
+    };
+  }
+
+  // Count alphanumeric characters & recognizable words
+  const alphanumericCount = (text.match(/[a-zA-Z0-9]/g) || []).length;
+  const wordMatches = text.match(/[a-zA-Z]{2,}/g) || [];
+
+  if (alphanumericCount < 50 || wordMatches.length < 10) {
+    return {
+      isValid: false,
+      cleanText: "",
+      reason: "The document contains insufficient readable text (likely a scanned image or photo).",
+    };
+  }
+
+  return { isValid: true, cleanText: text };
 }
 
-// Multi-engine PDF text extractor (supports multi-page, embedded images, Canva, Word, LaTeX)
-async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  let text = "";
+// Multi-engine PDF text extractor (Mozilla PDF.js / unpdf with pdf-parse fallback)
+async function extractCVText(arrayBuffer: ArrayBuffer): Promise<string> {
+  const uint8Array = new Uint8Array(arrayBuffer);
 
-  // Strategy 1: PDFParse class API (v2)
+  // Strategy 1: unpdf (Mozilla PDF.js standards-compliant engine)
+  try {
+    const result = await extractText(uint8Array, { mergePages: true });
+    let text = "";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawResult: any = result;
+    if (typeof rawResult.text === "string") {
+      text = rawResult.text.trim();
+    } else if (Array.isArray(rawResult.text)) {
+      text = rawResult.text.join("\n\n").trim();
+    }
+
+    if (text) {
+      const validation = cleanAndValidateCVText(text);
+      if (validation.isValid) {
+        return validation.cleanText;
+      }
+    }
+  } catch (unpdfErr) {
+    console.warn("[unpdf extraction error, trying fallback]:", unpdfErr);
+  }
+
+  // Strategy 2: pdf-parse fallback
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
     const pdfParseModule = require("pdf-parse") as any;
+    const buffer = Buffer.from(arrayBuffer);
 
     if (pdfParseModule?.PDFParse) {
+      const parser = new pdfParseModule.PDFParse({ data: buffer });
       try {
-        const parser = new pdfParseModule.PDFParse({ data: buffer });
+        const textResult = await parser.getText();
+        let text = textResult?.text ? textResult.text.trim() : "";
+        if (!text && Array.isArray(textResult?.pages)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          text = textResult.pages.map((p: any) => p.text || "").join("\n\n").trim();
+        }
+        if (text) {
+          const validation = cleanAndValidateCVText(text);
+          if (validation.isValid) {
+            return validation.cleanText;
+          }
+        }
+      } finally {
         try {
-          const textResult = await parser.getText();
-          if (textResult?.text) {
-            text = textResult.text.trim();
-          } else if (Array.isArray(textResult?.pages)) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            text = textResult.pages.map((p: any) => p.text || "").join("\n\n").trim();
+          if (typeof parser.destroy === "function") {
+            await parser.destroy();
           }
-        } catch (innerErr) {
-          console.warn("[PDFParse getText failed, trying fallbacks]:", innerErr);
-        } finally {
-          try {
-            if (typeof parser.destroy === "function") {
-              await parser.destroy();
-            }
-          } catch {
-            // Ignore parser destruction errors
-          }
+        } catch {
+          // Ignore parser destruction errors
         }
-      } catch (classInitErr) {
-        console.warn("[PDFParse instance init failed]:", classInitErr);
+      }
+    } else if (typeof pdfParseModule === "function") {
+      const pdfData = await pdfParseModule(buffer);
+      if (pdfData?.text) {
+        const validation = cleanAndValidateCVText(pdfData.text.trim());
+        if (validation.isValid) {
+          return validation.cleanText;
+        }
       }
     }
-
-    // Strategy 2: Direct function call fallback (v1 / CJS wrapper)
-    if (!text && typeof pdfParseModule === "function") {
-      try {
-        const pdfData = await pdfParseModule(buffer);
-        if (pdfData?.text) {
-          text = pdfData.text.trim();
-        }
-      } catch (funcErr) {
-        console.warn("[PDFParse function fallback failed]:", funcErr);
-      }
-    }
-  } catch (moduleLoadErr) {
-    console.warn("[PDFParse module load warning]:", moduleLoadErr);
+  } catch (pdfParseErr) {
+    console.warn("[pdf-parse fallback error]:", pdfParseErr);
   }
 
-  // Strategy 3: Stream Decompression Fallback (handles PDFs with images, charts, custom layouts)
-  if (!text || text.length < 50) {
-    try {
-      const streamText = extractTextFromStreams(buffer);
-      if (streamText && streamText.length > text.length) {
-        text = streamText;
-      }
-    } catch (streamErr) {
-      console.warn("[Stream extraction fallback failed]:", streamErr);
-    }
-  }
-
-  return text;
+  return "";
 }
 
 export async function POST(req: NextRequest) {
@@ -174,19 +192,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Extract PDF text ---
+    // --- Extract & Validate PDF Text ---
     let cvText = "";
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      cvText = await extractTextFromPDF(buffer);
+      cvText = await extractCVText(arrayBuffer);
     } catch (err) {
       const extractErr = err instanceof Error ? err.message : String(err);
       console.error("[Vercel Log] PDF Extraction Failed:", extractErr, err);
       return NextResponse.json(
         {
           error:
-            "Unable to parse this PDF file. Please ensure the document is not corrupted, password-protected, or restricted.",
+            "Could not extract text from this PDF. Please ensure the document is not corrupted, password-protected, or restricted.",
         },
         { status: 422 }
       );
@@ -196,13 +213,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "No readable text was found in your PDF. If your CV contains images, please make sure the text is selectable and not a flat photograph/scanned image.",
+            "Could not extract readable text from your CV. Please ensure the PDF is a text-based document (exported directly from Word, Google Docs, Canva, or a resume builder) rather than a scanned image or photo.",
         },
         { status: 422 }
       );
     }
 
-    // --- Run AI Analysis ---
+    // --- Run AI Analysis on Clean Text Only ---
     try {
       const analysis = await analyzeCV(cvText, jobDescription);
       return NextResponse.json(analysis, { status: 200 });
