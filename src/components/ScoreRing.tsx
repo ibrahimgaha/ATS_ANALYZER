@@ -11,10 +11,10 @@ interface ScoreRingProps {
   gradientId?: string;
 }
 
-function getScoreColor(score: number): { stroke: string; text: string } {
-  if (score >= 75) return { stroke: "#10b981", text: "text-emerald-600 dark:text-emerald-400" };
-  if (score >= 50) return { stroke: "#f59e0b", text: "text-amber-600 dark:text-amber-400" };
-  return { stroke: "#f43f5e", text: "text-rose-600 dark:text-rose-400" };
+function getScoreColor(score: number) {
+  if (score >= 75) return { stroke: "#10b981", text: "#10b981" };
+  if (score >= 55) return { stroke: "#f59e0b", text: "#f59e0b" };
+  return { stroke: "#f43f5e", text: "#f43f5e" };
 }
 
 export default function ScoreRing({
@@ -47,7 +47,7 @@ export default function ScoreRing({
   }, []);
 
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div className="flex flex-col items-center gap-2">
       <div className="relative" style={{ width: size, height: size }}>
         <svg
           ref={ref}
@@ -57,16 +57,16 @@ export default function ScoreRing({
           aria-label={`${label || "Score"}: ${score} out of 100`}
           role="img"
         >
-          {/* Background Track */}
+          {/* Track */}
           <circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
             fill="none"
-            className="stroke-slate-100 dark:stroke-slate-800"
+            stroke="var(--border)"
             strokeWidth={strokeWidth}
           />
-          {/* Value Ring */}
+          {/* Fill */}
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -78,23 +78,28 @@ export default function ScoreRing({
             strokeDasharray={circumference}
             strokeDashoffset={offset}
             transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            style={{
-              transition: "stroke-dashoffset 1s ease-out",
-            }}
+            style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1)" }}
           />
         </svg>
-        {/* Score number */}
+
+        {/* Center number */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-3xl font-extrabold tabular-nums tracking-tight ${colors.text}`}>
+          <span
+            className="font-extrabold tabular-nums"
+            style={{ fontSize: size * 0.22, lineHeight: 1, color: colors.text }}
+          >
             {score}
           </span>
-          <span className="text-[10px] uppercase font-bold text-slate-400">/ 100</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-3)" }}>
+            / 100
+          </span>
         </div>
       </div>
+
       {(label || sublabel) && (
-        <div className="text-center mt-1">
-          {label && <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{label}</p>}
-          {sublabel && <p className="text-[11px] text-slate-500 dark:text-slate-400">{sublabel}</p>}
+        <div className="text-center">
+          {label && <p className="text-xs font-semibold" style={{ color: "var(--text)" }}>{label}</p>}
+          {sublabel && <p className="text-[11px]" style={{ color: "var(--text-3)" }}>{sublabel}</p>}
         </div>
       )}
     </div>

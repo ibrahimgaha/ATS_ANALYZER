@@ -1,56 +1,86 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const MESSAGES = [
-  "Reading your CV...",
-  "Checking ATS compatibility...",
-  "Analyzing formatting...",
-  "Comparing your CV with the job description...",
-  "Preparing your results...",
-];
+import { useLang } from "./LanguageProvider";
+import { t, tr } from "@/lib/translations";
 
 export default function LoadingOverlay() {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [step, setStep] = useState(0);
+  const { lang } = useLang();
+  const steps = t.loading.steps;
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentStep((prev) => (prev + 1) % MESSAGES.length);
-    }, 2400);
-
+      setStep((s) => (s + 1) % steps.length);
+    }, 2600);
     return () => clearInterval(timer);
-  }, []);
+  }, [steps.length]);
+
+  const progress = ((step + 1) / steps.length) * 100;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-sm px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="loading-heading"
     >
-      <div className="card p-8 flex flex-col items-center gap-5 max-w-sm w-full text-center shadow-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-        {/* Minimalist Spinner */}
-        <div className="w-10 h-10 rounded-full border-3 border-slate-200 dark:border-slate-800 border-t-indigo-600 dark:border-t-indigo-500 animate-spin" />
-
-        <div>
-          <h2
-            id="loading-heading"
-            className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1 transition-all duration-300"
+      <div
+        className="card w-full max-w-sm p-8 flex flex-col items-center gap-6 text-center shadow-2xl"
+        style={{ background: "var(--surface)" }}
+      >
+        {/* Circular progress ring */}
+        <div className="relative w-12 h-12">
+          <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="20" fill="none" strokeWidth="3" style={{ stroke: "var(--border-2)" }} />
+            <circle
+              cx="24" cy="24" r="20"
+              fill="none" strokeWidth="3" strokeLinecap="round"
+              style={{
+                stroke: "var(--accent)",
+                strokeDasharray: `${2 * Math.PI * 20}`,
+                strokeDashoffset: `${2 * Math.PI * 20 * (1 - progress / 100)}`,
+                transition: "stroke-dashoffset 0.6s ease",
+              }}
+            />
+          </svg>
+          <span
+            className="absolute inset-0 flex items-center justify-center text-xs font-bold tabular-nums"
+            style={{ color: "var(--accent)" }}
           >
-            {MESSAGES[currentStep]}
+            {Math.round(progress)}%
+          </span>
+        </div>
+
+        {/* Step text */}
+        <div>
+          <h2 id="loading-heading" className="text-base font-semibold mb-1" style={{ color: "var(--text)" }}>
+            {tr(steps[step].label, lang)}
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Please wait while we generate your report. This usually takes 10–15 seconds.
+          <p className="text-sm" style={{ color: "var(--text-3)" }}>
+            {tr(steps[step].sub, lang)}
           </p>
         </div>
 
-        {/* Minimal Progress Indicator */}
-        <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden mt-1">
-          <div
-            className="bg-indigo-600 dark:bg-indigo-500 h-full transition-all duration-500 ease-out"
-            style={{ width: `${((currentStep + 1) / MESSAGES.length) * 100}%` }}
-          />
+        {/* Step dots */}
+        <div className="flex items-center gap-1.5">
+          {steps.map((_, i) => (
+            <div
+              key={i}
+              className="rounded-full transition-all duration-300"
+              style={{
+                width: i === step ? 18 : 6,
+                height: 6,
+                background: i === step ? "var(--accent)" : "var(--border-2)",
+              }}
+            />
+          ))}
         </div>
+
+        <p className="text-xs" style={{ color: "var(--text-3)" }}>
+          {tr(t.loading.wait, lang)}
+        </p>
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useLang } from "./LanguageProvider";
+import { t, tr } from "@/lib/translations";
 
 interface UploadDropzoneProps {
   onFileSelect: (file: File) => void;
@@ -8,12 +10,10 @@ interface UploadDropzoneProps {
   error?: string;
 }
 
-export default function UploadDropzone({
-  onFileSelect,
-  selectedFile,
-  error,
-}: UploadDropzoneProps) {
+export default function UploadDropzone({ onFileSelect, selectedFile, error }: UploadDropzoneProps) {
   const [dragging, setDragging] = useState(false);
+  const { lang } = useLang();
+  const dz = t.dropzone;
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -36,86 +36,65 @@ export default function UploadDropzone({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const borderColor = error ? "#f43f5e" : dragging ? "var(--accent)" : selectedFile ? "#10b981" : "var(--border-2)";
+  const bgColor    = error ? "rgba(244,63,94,0.04)" : dragging ? "var(--accent-bg)" : selectedFile ? "rgba(16,185,129,0.04)" : "var(--surface-2)";
+
   return (
     <div>
       <label
         id="cv-upload-label"
         htmlFor="cv-upload"
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
-        className={`
-          flex flex-col items-center justify-center gap-2.5 
-          border-2 border-dashed rounded-xl p-7 cursor-pointer
-          transition-all duration-150
-          ${
-            dragging
-              ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30"
-              : selectedFile
-              ? "border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30"
-              : "border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 bg-slate-50/50 dark:bg-slate-900/50"
-          }
-          ${error ? "border-rose-500 bg-rose-50/50 dark:bg-rose-950/30" : ""}
-        `}
+        style={{ borderColor, background: bgColor }}
+        className="flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all duration-150 select-none"
       >
         {selectedFile ? (
           <>
-            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: "rgba(16,185,129,0.1)", color: "#10b981" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
+                <polyline points="9 15 12 18 15 15" />
               </svg>
             </div>
             <div className="text-center">
-              <p className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
-                {selectedFile.name}
-              </p>
-              <p className="text-[11px] text-slate-500 mt-0.5 font-mono">
-                {formatBytes(selectedFile.size)} · PDF Document
-              </p>
+              <p className="font-semibold text-sm" style={{ color: "var(--text)" }}>{selectedFile.name}</p>
+              <p className="text-xs font-mono mt-0.5" style={{ color: "var(--text-3)" }}>{formatBytes(selectedFile.size)} · PDF</p>
             </div>
-            <span className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline mt-1">
-              Change file
-            </span>
+            <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{tr(dz.change, lang)}</span>
           </>
         ) : (
           <>
-            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: "var(--bg-subtle)", color: "var(--text-3)" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
             </div>
             <div className="text-center">
-              <p className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                {dragging ? "Drop your CV file here" : "Click or drag your CV to upload"}
+              <p className="font-semibold text-sm" style={{ color: "var(--text)" }}>
+                {dragging ? tr(dz.drop, lang) : tr(dz.upload, lang)}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Supported format: PDF · Maximum size: 5 MB
-              </p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-3)" }}>{tr(dz.hint, lang)}</p>
             </div>
-            <span className="text-xs font-semibold px-3 py-1.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-sm mt-1">
-              Select PDF File
+            <span
+              className="text-xs font-semibold px-3 py-1.5 rounded-md border transition-colors"
+              style={{ background: "var(--surface)", borderColor: "var(--border-2)", color: "var(--text-2)" }}
+            >
+              {tr(dz.choose, lang)}
             </span>
           </>
         )}
-
-        <input
-          id="cv-upload"
-          type="file"
-          accept="application/pdf"
-          className="sr-only"
-          onChange={handleChange}
-          aria-describedby={error ? "cv-upload-error" : "cv-upload-label"}
-        />
+        <input id="cv-upload" type="file" accept="application/pdf" className="sr-only" onChange={handleChange} aria-describedby={error ? "cv-upload-error" : "cv-upload-label"} />
       </label>
 
       {error && (
-        <p id="cv-upload-error" className="mt-2 text-sm text-red-400 flex items-center gap-1.5">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-            <path d="M7 0a7 7 0 100 14A7 7 0 007 0zm0 10.5a.875.875 0 110-1.75.875.875 0 010 1.75zm.875-4.375a.875.875 0 11-1.75 0V3.5a.875.875 0 111.75 0v2.625z" />
+        <p id="cv-upload-error" className="mt-2 text-sm flex items-center gap-1.5" style={{ color: "#f43f5e" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           {error}
         </p>

@@ -4,54 +4,30 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { AnalysisResult } from "@/types/analysis";
 import ScoreRing from "@/components/ScoreRing";
+import { useLang } from "@/components/LanguageProvider";
+import { t, tr } from "@/lib/translations";
 
-function getAtsStatus(score: number) {
-  if (score >= 85) {
-    return {
-      badge: "High ATS Match",
-      desc: "Your CV matches standard ATS parsing rules and has optimal formatting.",
-      badgeStyle: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
-    };
-  }
-  if (score >= 70) {
-    return {
-      badge: "ATS Compatible",
-      desc: "Your CV will parse smoothly through most ATS engines. Adding missing skills will boost your rank.",
-      badgeStyle: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
-    };
-  }
-  if (score >= 55) {
-    return {
-      badge: "Needs Formatting Fixes",
-      desc: "Some layout sections or missing keywords may cause issues with certain applicant tracking software.",
-      badgeStyle: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800",
-    };
-  }
-  return {
-    badge: "Low ATS Match",
-    desc: "Significant structural or keyword improvements required to pass automated parsing software.",
-    badgeStyle: "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800",
-  };
+// Feature flag — flip to true when Pro modal is ready
+const ENABLE_PRO_MODAL = false;
+
+function getAtsStatus(score: number, lang: "en" | "fr") {
+  const sl = t.results.statusLabels;
+  const sd = t.results.statusDescs;
+  if (score >= 85) return { label: tr(sl.strong, lang), desc: tr(sd.strong, lang), color: "#10b981", bg: "rgba(16,185,129,0.07)", border: "rgba(16,185,129,0.2)" };
+  if (score >= 70) return { label: tr(sl.good,   lang), desc: tr(sd.good,   lang), color: "#3b82f6", bg: "rgba(59,130,246,0.07)",  border: "rgba(59,130,246,0.2)"  };
+  if (score >= 55) return { label: tr(sl.needs,  lang), desc: tr(sd.needs,  lang), color: "#f59e0b", bg: "rgba(245,158,11,0.07)",  border: "rgba(245,158,11,0.2)"  };
+  return               { label: tr(sl.low,    lang), desc: tr(sd.low,    lang), color: "#f43f5e", bg: "rgba(244,63,94,0.07)",   border: "rgba(244,63,94,0.2)"   };
 }
 
-function MetricRow({
-  label,
-  score,
-}: {
-  label: string;
-  score: number;
-}) {
+function ScoreBar({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between items-center text-xs font-semibold">
-        <span className="text-slate-600 dark:text-slate-400">{label}</span>
-        <span className="tabular-nums font-bold text-slate-900 dark:text-slate-100">{score}%</span>
+    <div>
+      <div className="flex items-center justify-between text-xs mb-1.5">
+        <span style={{ color: "var(--text-2)" }}>{label}</span>
+        <span className="font-semibold tabular-nums" style={{ color: "var(--text)" }}>{value}%</span>
       </div>
-      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-500 ease-out"
-          style={{ width: `${score}%` }}
-        />
+      <div className="progress-track">
+        <div className="progress-fill" style={{ width: `${value}%`, background: color }} />
       </div>
     </div>
   );
@@ -59,291 +35,203 @@ function MetricRow({
 
 export default function ResultsPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [error, setError] = useState<string>("");
-  const [copiedSummary, setCopiedSummary] = useState(false);
-  const [copiedBulletIdx, setCopiedBulletIdx] = useState<number | null>(null);
+  const [error, setError]   = useState<string>("");
+  const { lang } = useLang();
+  const r = t.results;
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("cvscore_result");
-      if (!raw) {
-        setError("No analysis found. Please upload a CV first.");
-        return;
-      }
-      const parsed = JSON.parse(raw) as AnalysisResult;
-      setResult(parsed);
+      if (!raw) { setError(tr(r.errNotFound, lang)); return; }
+      setResult(JSON.parse(raw) as AnalysisResult);
     } catch {
-      setError("Could not load results. Please try again.");
+      setError(tr(r.errLoad, lang));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCopySummary = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedSummary(true);
-    setTimeout(() => setCopiedSummary(false), 2000);
-  };
-
-  const handleCopyBullet = (text: string, idx: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedBulletIdx(idx);
-    setTimeout(() => setCopiedBulletIdx(null), 2000);
-  };
-
+  /* ── Error state ── */
   if (error) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-4 text-center">
-        <div className="w-12 h-12 rounded-full bg-rose-50 dark:bg-rose-950 flex items-center justify-center text-rose-600 dark:text-rose-400">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-5 px-4 text-center">
+        <div className="w-12 h-12 rounded-full flex items-center justify-center"
+          style={{ background: "rgba(244,63,94,0.08)", color: "#f43f5e", border: "1px solid rgba(244,63,94,0.2)" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
         </div>
-        <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100">{error}</h1>
-        <Link href="/analyze" className="btn-primary text-xs py-2 px-4">
-          Analyze a CV
-        </Link>
+        <div>
+          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text)" }}>{error}</p>
+          <p className="text-xs" style={{ color: "var(--text-3)" }}>{lang === "fr" ? "Importez un CV pour obtenir votre rapport." : "Upload a CV to get your report."}</p>
+        </div>
+        <Link href="/analyze" className="btn-primary text-sm py-2.5 px-5">{tr(r.errAnalyze, lang)}</Link>
       </div>
     );
   }
 
+  /* ── Loading state ── */
   if (!result) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+        <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ borderColor: "var(--border-2)", borderTopColor: "var(--accent)" }} />
       </div>
     );
   }
 
-  const atsStatus = getAtsStatus(result.atsScore);
+  const status     = getAtsStatus(result.atsScore, lang);
+  const strengths  = result.strengths.slice(0, 3);
+  const weaknesses = result.weaknesses.slice(0, 3);
+  const recs       = result.recommendations.slice(0, 3);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Top Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5 mb-8">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-4" style={{ color: "var(--text)" }}>
+
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b" style={{ borderColor: "var(--border)" }}>
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-              Audit Report Ready
-            </span>
+          <p className="section-label mb-1">{tr(r.sectionLabel, lang)}</p>
+          <h1 className="text-xl font-bold tracking-tight" style={{ color: "var(--text)" }}>{tr(r.h1, lang)}</h1>
+        </div>
+        <Link href="/analyze" className="btn-ghost text-xs py-2 px-4 self-start sm:self-auto">
+          {tr(r.analyzeAnother, lang)}
+        </Link>
+      </div>
+
+      {/* ── Score card ── */}
+      <div className="card p-6" style={{ background: "var(--surface)" }}>
+        <div className="grid sm:grid-cols-12 gap-6 items-center">
+          <div className="sm:col-span-4 flex flex-col items-center justify-center text-center sm:border-r sm:pr-6" style={{ borderColor: "var(--border)" }}>
+            <ScoreRing score={result.atsScore} size={128} strokeWidth={9} />
+            <div className="mt-3 px-3 py-1 rounded-full text-xs font-semibold border"
+              style={{ background: status.bg, color: status.color, borderColor: status.border }}>
+              {status.label}
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-            ATS Compatibility Evaluation
-          </h1>
+          <div className="sm:col-span-8 space-y-4">
+            <div>
+              <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-2)" }}>{tr(r.summary, lang)}</p>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--text-3)" }}>{status.desc}</p>
+            </div>
+            <div className="space-y-3">
+              <ScoreBar label={tr(r.atsCompat,  lang)} value={result.atsScore}        color="var(--accent)" />
+              <ScoreBar label={tr(r.formatting, lang)} value={result.formattingScore} color="#10b981" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Strengths + Improvements ── */}
+      <div className="grid sm:grid-cols-2 gap-4">
+
+        <div className="card p-5" style={{ background: "var(--surface)" }}>
+          <p className="text-[11px] font-bold uppercase tracking-wider mb-4 flex items-center gap-2" style={{ color: "#10b981" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+            {tr(r.strengths, lang)}
+          </p>
+          <ul className="space-y-3">
+            {strengths.map((item, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-xs leading-relaxed" style={{ color: "var(--text-2)" }}>
+                <span className="w-4 h-4 rounded flex-shrink-0 mt-0.5 flex items-center justify-center text-[10px] font-bold"
+                  style={{ background: "rgba(16,185,129,0.08)", color: "#10b981" }}>{i + 1}</span>
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => window.print()}
-            className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
-            title="Print or save as PDF"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
+        <div className="card p-5" style={{ background: "var(--surface)" }}>
+          <p className="text-[11px] font-bold uppercase tracking-wider mb-4 flex items-center gap-2" style={{ color: "#f59e0b" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Print Report
-          </button>
-          <Link href="/analyze" className="btn-primary text-xs py-2 px-4">
-            Analyze Another CV
+            {tr(r.improvements, lang)}
+          </p>
+          <ul className="space-y-3">
+            {weaknesses.map((item, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-xs leading-relaxed" style={{ color: "var(--text-2)" }}>
+                <span className="w-4 h-4 rounded flex-shrink-0 mt-0.5 flex items-center justify-center text-[10px] font-bold"
+                  style={{ background: "rgba(245,158,11,0.08)", color: "#f59e0b" }}>{i + 1}</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* ── Recommendations ── */}
+      <div className="card p-5" style={{ background: "var(--surface)" }}>
+        <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--text-3)" }}>
+          {tr(r.recs, lang)}
+        </p>
+        <div className="space-y-2.5">
+          {recs.map((rec, i) => (
+            <div key={i} className="flex items-start gap-3 text-xs leading-relaxed p-3 rounded-lg"
+              style={{ background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+              <span className="w-5 h-5 rounded font-bold flex-shrink-0 flex items-center justify-center text-[11px]"
+                style={{ background: "var(--accent-bg)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}>
+                {i + 1}
+              </span>
+              <span style={{ color: "var(--text-2)" }}>{rec}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Pro teaser ── */}
+      <div className="card p-6 relative overflow-hidden" style={{ background: "var(--surface)" }}>
+        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-[10px]" style={{ background: "var(--accent)" }} />
+
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="section-label">{tr(r.proLabel, lang)}</p>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+                style={{ background: "var(--accent-bg)", color: "var(--accent)", borderColor: "var(--accent-border)" }}>
+                {tr(r.proSoon, lang)}
+              </span>
+            </div>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text)" }}>{tr(r.proH3, lang)}</h3>
+            <p className="text-xs mt-1" style={{ color: "var(--text-3)" }}>{tr(r.proBody, lang)}</p>
+          </div>
+          <Link href="/#pricing" className="btn-ghost text-xs py-2 px-4 self-start flex-shrink-0">
+            {tr(r.viewPlans, lang)}
           </Link>
         </div>
-      </div>
 
-      {/* ── 🌟 ASYMMETRIC DASHBOARD GRID ── */}
-      <div className="grid lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column (4 cols): Sticky Score Overview & Key Metrics */}
-        <div className="lg:col-span-4 lg:sticky lg:top-20 space-y-5">
-          {/* Main Score Hero Card */}
-          <div className="card p-6 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800 shadow-sm text-center">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-              Primary ATS Score
-            </span>
-            <div className="flex justify-center my-3">
-              <ScoreRing score={result.atsScore} size={150} strokeWidth={11} label="" />
-            </div>
-
-            <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border mt-2 ${atsStatus.badgeStyle}`}>
-              {atsStatus.badge}
-            </span>
-
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-              {atsStatus.desc}
-            </p>
-          </div>
-
-          {/* Metric Breakdown Card */}
-          <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-              Performance Breakdown
-            </h3>
-            <MetricRow label="Overall Quality" score={result.overallScore} />
-            <MetricRow label="Keyword Relevance" score={result.keywordScore} />
-            <MetricRow label="Formatting & Layout" score={result.formattingScore} />
-          </div>
-
-          {/* Privacy & Legal Disclaimer */}
-          <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 leading-relaxed">
-            AI evaluation for guidance only — does not guarantee employment outcomes or ATS approval.
-          </div>
-        </div>
-
-        {/* Right Main Workspace (8 cols): Actionable Findings & Content Rewrites */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Strengths & Weaknesses Split Grid */}
-          <div className="grid sm:grid-cols-2 gap-5">
-            {/* Strengths */}
-            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-3 flex items-center gap-1.5">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
+        {/* Blurred preview grid */}
+        <div className="grid sm:grid-cols-2 gap-2.5 select-none">
+          {r.proItems.map(({ icon, title, desc }) => (
+            <div key={icon} className="relative flex items-start gap-3 p-3.5 rounded-lg border"
+              style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}>
+              <div style={{ opacity: 0.35 }} className="flex items-start gap-3">
+                <span className="text-base flex-shrink-0">{icon}</span>
+                <div>
+                  <p className="text-xs font-semibold" style={{ color: "var(--text)" }}>{tr(title, lang)}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: "var(--text-3)" }}>{tr(desc, lang)}</p>
+                </div>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg" style={{ backdropFilter: "blur(3px)" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: "var(--text-3)" }}>
+                  <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
-                CV Strengths
-              </h2>
-              <ul className="space-y-2.5">
-                {result.strengths.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">✓</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Weaknesses / Formatting Warnings */}
-            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-3 flex items-center gap-1.5">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                Formatting Warnings & Gaps
-              </h2>
-              <ul className="space-y-2.5">
-                {result.weaknesses.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                    <span className="text-rose-600 dark:text-rose-400 font-bold mt-0.5">!</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Missing Keywords Cloud */}
-          {result.missingKeywords.length > 0 && (
-            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-1">
-                Missing Keywords & Role Terminology
-              </h2>
-              <p className="text-xs text-slate-500 mb-3">
-                Incorporate these terms into your job descriptions or skills section to improve ATS relevance rankings:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {result.missingKeywords.map((kw, i) => (
-                  <span
-                    key={i}
-                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-medium text-slate-700 dark:text-slate-300"
-                  >
-                    + {kw}
-                  </span>
-                ))}
               </div>
             </div>
-          )}
-
-          {/* Actionable Recommendations */}
-          {result.recommendations.length > 0 && (
-            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-3">
-                Actionable Recommendations
-              </h2>
-              <div className="space-y-2.5">
-                {result.recommendations.map((rec, i) => (
-                  <div key={i} className="flex items-start gap-3 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                    <span className="w-5 h-5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold text-[11px] flex items-center justify-center flex-shrink-0 border border-indigo-200 dark:border-indigo-800 mt-0.5">
-                      {i + 1}
-                    </span>
-                    <span>{rec}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Suggested Professional Summary Rewrite */}
-          {result.summarySuggestion && (
-            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-                  Suggested Professional Summary Rewrite
-                </h2>
-                <button
-                  onClick={() => handleCopySummary(result.summarySuggestion)}
-                  className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1.5 transition-colors"
-                >
-                  {copiedSummary ? (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      <span className="text-emerald-600 dark:text-emerald-400">Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                      </svg>
-                      Copy Summary
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 italic leading-relaxed">
-                &ldquo;{result.summarySuggestion}&rdquo;
-              </div>
-            </div>
-          )}
-
-          {/* Suggested Bullet Point Rewrites */}
-          {result.bulletPointSuggestions.length > 0 && (
-            <div className="card p-5 bg-white dark:bg-[#131722] border-slate-200 dark:border-slate-800">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 mb-3">
-                Suggested Bullet Point Rewrites
-              </h2>
-              <div className="space-y-2.5">
-                {result.bulletPointSuggestions.map((bp, i) => (
-                  <div
-                    key={i}
-                    className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed flex items-start justify-between gap-3 group"
-                  >
-                    <span>{bp}</span>
-                    <button
-                      onClick={() => handleCopyBullet(bp, i)}
-                      className="flex-shrink-0 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1"
-                      title="Copy bullet point"
-                    >
-                      {copiedBulletIdx === i ? (
-                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Copied!</span>
-                      ) : (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          ))}
         </div>
       </div>
+
+      {/* ── Footer nav ── */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs" style={{ color: "var(--text-3)" }}>
+        <p>{tr(r.disclaimer, lang)}</p>
+        <div className="flex items-center gap-2">
+          <Link href="/analyze" className="btn-primary text-xs py-2 px-4">{tr(r.analyzeMore, lang)}</Link>
+          <Link href="/"        className="btn-ghost  text-xs py-2 px-4">{tr(r.home,        lang)}</Link>
+        </div>
+      </div>
+
+      {/* Suppress unused var warning */}
+      {ENABLE_PRO_MODAL && null}
     </div>
   );
 }
