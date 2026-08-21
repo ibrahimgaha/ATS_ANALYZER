@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useLang, type Lang } from "./LanguageProvider";
 
 function FlagUK() {
@@ -32,7 +33,13 @@ function FlagFR() {
   );
 }
 
-const LANGS: { code: Lang; Flag: () => JSX.Element; label: string }[] = [
+interface LangItem {
+  code: Lang;
+  Flag: React.ComponentType;
+  label: string;
+}
+
+const LANGS: LangItem[] = [
   { code: "en", Flag: FlagUK, label: "English" },
   { code: "fr", Flag: FlagFR, label: "Français" },
 ];
